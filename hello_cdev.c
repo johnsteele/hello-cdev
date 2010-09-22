@@ -1,7 +1,7 @@
 /*
  * cdev.c -- A simple char device driver.
  *
- * Copyright (C) 2010 John Stele
+ * Copyright (C) 2010 John Steele
  *
  * $Id: cdev.c, v 1.0.0 2010/09/21 John Exp $
  */
