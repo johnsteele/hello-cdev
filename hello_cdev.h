@@ -13,15 +13,21 @@
 #define HELLO_MAJOR 0 /* Use a dynamic major by default. */
 #endif
 
+#ifndef HELLO_MINOR
+#define HELLO_MINOR 0 /* Start the sequence at zero by default. */
+#endif
+
 #ifndef NUM_DEVICES
 #define NUM_DEVICES 1 /* Create one device 'hello_cdev0' by default. */
 #endif
 
+
 /*
  * Some configurable parameters that can be set using on command line.
  */
-extern int hello_major;  /* hello_cdev.c */
-extern int num_devices;  /* hello_cdev.c */
+extern int hello_major;  /* see: hello_cdev.c */
+extern int hello_minor;  /* see: hello_cdev.c */
+extern int num_devices;  /* see: hello_cdev.c */
 
 
 /*
