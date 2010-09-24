@@ -31,7 +31,7 @@ int hello_major = HELLO_MAJOR;
 int hello_minor = HELLO_MINOR;
 int num_devices = NUM_DEVICES;
 
-/* (e.g., insmod ./hello_cdev.ko hello_major=222 hello_minor=1 num_devs=3) */
+/* (e.g., insmod ./hello_cdev.ko hello_major=222 hello_minor=1 num_devices=3) */
 module_param(hello_major, int, S_IRUGO);
 module_param(hello_minor, int, S_IRUGO);
 module_param(num_devices, int, S_IRUGO); 
@@ -80,8 +80,8 @@ ssize_t device_write(struct file *filp, const char __user *buf, size_t count,
 	char *temp = kmalloc(count * sizeof(char), GFP_KERNEL); 
 	if (copy_to_user(temp, buf, sizeof(temp)) != 0)
 		printk(KERN_NOTICE "Copying to kernel space failed.\n");
-
-	return sizeof(temp);
+	kfree(temp);
+	return count;
 }
 
 

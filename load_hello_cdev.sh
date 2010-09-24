@@ -2,7 +2,8 @@
 # $Id: load_hello_cdev, v 1.0.0 2010/08/23 John Exp $
 module="hello-cdev"
 device="hello-cdev"
-mode="664"
+name="hello_cdev"
+mode="664" #readable/writeable to owner, readable to others.
 
 #More than likely this driver will get a major dynamically,
 #so the invocation of insmod can be replaced by this script.
@@ -28,7 +29,7 @@ fi
 
 #Invoke insmod with all arguments we got, and use a path name,
 #as insmod doesn't look in '.' by default.
-/sbin/insmod ./$module.ko $* || exit 1
+/sbin/insmod ./$name.ko $* || exit 1
 
 #Retrieve the major number.
 major=$(awk "\$2==\"$module\" {print \$1}" /proc/devices)
@@ -40,6 +41,7 @@ mknod /dev/${device}0 c $major 0
 #c means that a char device is to be created. 
 
 #Now change the group and permission.
+#Force a symbolic link.
 ln -sf ${device}0 /dev/${device}
 chgrp $group /dev/${device}0
 chmod $mode  /dev/${device}0
