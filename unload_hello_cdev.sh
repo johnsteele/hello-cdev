@@ -1,6 +1,6 @@
 #! /bin/sh
 # $Id: unload_hello_cdev.sh, v 1.0.0 2010/09/23 John Exp $
-module="hello-cdev"
+module="hello_cdev"
 device="hello-cdev"
 
 #Invoke rmmod with all arguments we got.
