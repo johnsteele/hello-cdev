@@ -21,7 +21,7 @@
 #define NUM_DEVICES 1 /* Create one device 'hello_cdev0' by default. */
 #endif
 
-
+#define USER_BUFFER_SIZE (16 * 1024) /* Use a 16K buffer. */
 /*
  * Some configurable parameters that can be set using on command line.
  */

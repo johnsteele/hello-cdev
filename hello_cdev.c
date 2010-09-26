@@ -43,6 +43,10 @@ module_param(num_devices, int, S_IRUGO);
  */ 
 struct cdev *my_devices;
 
+/* 
+ * A buffer for copy_*_user.
+ */
+char my_buffer[USER_BUFFER_SIZE] = "Hello from the kernel.";
 
 /*
  * Functions definded by this driver that 
@@ -63,11 +67,23 @@ struct file_operations fops = {
 ssize_t device_read(struct file *filp, char __user *buf, size_t count, 
 			loff_t *f_pos) 
 {
-	char temp[] = "Hello from the kernel!";
-	if (copy_from_user(buf, temp, strlen(temp)) != 0) 
-		printk(KERN_NOTICE "Copying to user space failed.\n");
+	int remaining_data, transfer_data_size;
+	
+	// The bytes left to transfer.
+	remaining_data = USER_BUFFER_SIZE - (int) (*f_pos); 
+	if (remaining_data == 0) 
+		return 0;	
 
-	return strlen(temp); 	
+	// Take notes rookies. 
+	transfer_data_size = min(remaining_data, (int) count);
+ 
+	if (copy_to_user(buf /* to */, my_buffer /* from */, transfer_data_size) != 0) {
+		printk(KERN_NOTICE "Copying to user space failed again.\n");
+		return -EFAULT;	
+	} else {
+		*f_pos += transfer_data_size;	
+		return transfer_data_size; 
+	}
 }
 
 
@@ -77,10 +93,8 @@ ssize_t device_read(struct file *filp, char __user *buf, size_t count,
 ssize_t device_write(struct file *filp, const char __user *buf, size_t count,
 			loff_t *f_pos)
 {
-	char *temp = kmalloc(count * sizeof(char), GFP_KERNEL); 
-	if (copy_to_user(temp, buf, sizeof(temp)) != 0)
+	if (copy_from_user(my_buffer /* to */, buf /* from */, sizeof(my_buffer)) != 0)
 		printk(KERN_NOTICE "Copying to kernel space failed.\n");
-	kfree(temp);
 	return count;
 }
 
