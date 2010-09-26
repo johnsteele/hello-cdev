@@ -46,7 +46,7 @@ struct cdev *my_devices;
 /* 
  * A buffer for copy_*_user.
  */
-char my_buffer[USER_BUFFER_SIZE] = "Hello from the kernel.";
+static void *my_buffer;
 
 /*
  * Functions definded by this driver that 
@@ -64,20 +64,22 @@ struct file_operations fops = {
 /*
  * Read from the device.
  */
-ssize_t device_read(struct file *filp, char __user *buf, size_t count, 
+ssize_t device_read(struct file *filp, char __user *buff, size_t count, 
 			loff_t *f_pos) 
 {
 	int remaining_data, transfer_data_size;
 	
-	// The bytes left to transfer.
+	/* The bytes left to transfer. */
 	remaining_data = USER_BUFFER_SIZE - (int) (*f_pos); 
 	if (remaining_data == 0) 
 		return 0;	
 
-	// Take notes rookies. 
+	/* Only copy what will fit. */ 
 	transfer_data_size = min(remaining_data, (int) count);
- 
-	if (copy_to_user(buf /* to */, my_buffer /* from */, transfer_data_size) != 0) {
+
+
+	my_buffer = "Hello from the man!"; 
+	if (copy_to_user(buff /* to */, my_buffer + *f_pos /* from */, transfer_data_size) != 0) {
 		printk(KERN_NOTICE "Copying to user space failed again.\n");
 		return -EFAULT;	
 	} else {
@@ -90,12 +92,27 @@ ssize_t device_read(struct file *filp, char __user *buf, size_t count,
 /*
  * Write to this device.
  */
-ssize_t device_write(struct file *filp, const char __user *buf, size_t count,
+ssize_t device_write(struct file *filp, const char __user *buff, size_t count,
 			loff_t *f_pos)
 {
-	if (copy_from_user(my_buffer /* to */, buf /* from */, sizeof(my_buffer)) != 0)
+	int remaining_data;
+	remaining_data = USER_BUFFER_SIZE - (int) (*f_pos);
+
+	if (count > remaining_data) {
+		/* Can't write past the end of the device. */ 	
+		return -EIO;
+	}
+
+
+	if (copy_from_user(my_buffer + *f_pos/* to */, buff /* from */, count) != 0) {
 		printk(KERN_NOTICE "Copying to kernel space failed.\n");
-	return count;
+		return -EFAULT;
+	} else {
+		printk(KERN_NOTICE "my_buffer: ", my_buffer);
+		// Otherwise, increase the position in the open file.
+		*f_pos += count;
+		return count;
+	}
 }
 
 
@@ -124,12 +141,19 @@ void setup_cdev(struct cdev *the_cdev, int index)
  */
 static void __exit driver_cleanup(void) 
 {
-	int i;
-	for (i = 0; i < num_devices; i++) {
-		cdev_del(&my_devices[i]);
-		printk(KERN_NOTICE "Removing hello-cdev%d device\n", i);
+	if (my_devices) {
+		int i;
+		for (i = 0; i < num_devices; i++) {
+			cdev_del(&my_devices[i]);
+			printk(KERN_NOTICE "Removing hello-cdev%d device\n", i);
+		}
+
+		kfree(my_devices);
 	}
-	kfree(my_devices);
+ 	
+	if (my_buffer)
+		kfree(my_buffer);
+
 	unregister_chrdev_region(MKDEV(hello_major, hello_minor), num_devices);
 }
 
@@ -149,9 +173,16 @@ static int __init driver_init(void)
 	if (hello_major) { 
 		// If user specified a major.
 		device = MKDEV(hello_major, hello_minor);
+	
 		result = register_chrdev_region(device, num_devices, "hello-cdev");
 	} else {          
-		 // Otherwise get major from kernel.
+		// Otherwise get major from kernel.
+		
+		// The name of this device (e.g., hello-cdev) has nothing to do
+		// with the name of the device in /dev. 
+		// It only helps to track the different owners of devices.
+		// If your module name has only one type of devices it's okay to
+		// use e.g., the name of the module, as I did here. 
 		result = alloc_chrdev_region(&device, hello_minor, num_devices, 
 						"hello-cdev");
 	  	 // Set our dynamically allocated major. 
@@ -165,18 +196,32 @@ static int __init driver_init(void)
 	}
 
 	my_devices = kmalloc(num_devices * sizeof(struct cdev), GFP_KERNEL);
+	
  	if (!my_devices) {
 		result = -ENOMEM;
 		goto fail; 
 	}
 
 	memset(my_devices, 0, num_devices * sizeof(struct cdev));
-
+	
 	// Set up the char devices. 
  	for (i = 0; i < num_devices; i++) {
 		setup_cdev(&my_devices[i], i);	
 		printk(KERN_NOTICE "Registering hello-cdev%d device.\n", i);	
 	}	
+		
+	/* The user-space buffer. */
+	/* GFP_KERNEL - Allocate normal kernel ram.*/ 
+	my_buffer = kmalloc (USER_BUFFER_SIZE * sizeof (char), GFP_KERNEL);
+	if (!my_buffer) {
+		result = -ENOMEM;
+		goto fail;
+	}
+	
+	/* my_buffer is of type void, so technically I shouldn't use char */
+	memset (my_buffer, 0, USER_BUFFER_SIZE * sizeof (char));	
+
+
 	return 0;
 	
 	fail:
