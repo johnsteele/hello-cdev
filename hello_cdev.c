@@ -215,8 +215,7 @@ static int __init driver_init(void)
 		goto fail;
 	}
 	
-	/* my_buffer is of type void, so technically I shouldn't use char */
-	memset (my_buffer, 0, USER_BUFFER_SIZE * sizeof (char));	
+	memset (my_buffer, 0, USER_BUFFER_SIZE * sizeof (*my_buffer));	
 	return 0;
 	
 	fail:
