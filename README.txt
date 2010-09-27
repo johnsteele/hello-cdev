@@ -1,2 +1,2 @@
-This is a simple char driver. It servers as a basic template for newbies.
+This is a simple char driver. It provides functionality to read/write to and from the device. 
 
