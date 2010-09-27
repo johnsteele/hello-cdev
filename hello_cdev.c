@@ -46,7 +46,7 @@ struct cdev *my_devices;
 /* 
  * A buffer for copy_*_user.
  */
-static void *my_buffer;
+static char *my_buffer;
 
 /*
  * Functions definded by this driver that 
@@ -67,6 +67,7 @@ struct file_operations fops = {
 ssize_t device_read(struct file *filp, char __user *buff, size_t count, 
 			loff_t *f_pos) 
 {
+
 	int remaining_data, transfer_data_size;
 	
 	/* The bytes left to transfer. */
@@ -77,13 +78,11 @@ ssize_t device_read(struct file *filp, char __user *buff, size_t count,
 	/* Only copy what will fit. */ 
 	transfer_data_size = min(remaining_data, (int) count);
 
-
-	my_buffer = "Hello from the man!"; 
 	if (copy_to_user(buff /* to */, my_buffer + *f_pos /* from */, transfer_data_size) != 0) {
 		printk(KERN_NOTICE "Copying to user space failed again.\n");
 		return -EFAULT;	
 	} else {
-		*f_pos += transfer_data_size;	
+		*f_pos += transfer_data_size;
 		return transfer_data_size; 
 	}
 }
@@ -103,12 +102,10 @@ ssize_t device_write(struct file *filp, const char __user *buff, size_t count,
 		return -EIO;
 	}
 
-
 	if (copy_from_user(my_buffer + *f_pos/* to */, buff /* from */, count) != 0) {
 		printk(KERN_NOTICE "Copying to kernel space failed.\n");
 		return -EFAULT;
-	} else {
-		printk(KERN_NOTICE "my_buffer: ", my_buffer);
+	} else {	
 		// Otherwise, increase the position in the open file.
 		*f_pos += count;
 		return count;
@@ -150,10 +147,10 @@ static void __exit driver_cleanup(void)
 
 		kfree(my_devices);
 	}
- 	
-	if (my_buffer)
-		kfree(my_buffer);
 
+	if (my_buffer) 
+		kfree(my_buffer);
+ 	
 	unregister_chrdev_region(MKDEV(hello_major, hello_minor), num_devices);
 }
 
@@ -195,16 +192,16 @@ static int __init driver_init(void)
 		return result;	
 	}
 
-	my_devices = kmalloc(num_devices * sizeof(struct cdev), GFP_KERNEL);
+	my_devices = kmalloc(num_devices * sizeof (struct cdev), GFP_KERNEL);
 	
  	if (!my_devices) {
 		result = -ENOMEM;
 		goto fail; 
 	}
 
-	memset(my_devices, 0, num_devices * sizeof(struct cdev));
+	memset(my_devices, 0, num_devices * sizeof (struct cdev));
 	
-	// Set up the char devices. 
+	/* Set up the char devices. */ 
  	for (i = 0; i < num_devices; i++) {
 		setup_cdev(&my_devices[i], i);	
 		printk(KERN_NOTICE "Registering hello-cdev%d device.\n", i);	
@@ -212,7 +209,7 @@ static int __init driver_init(void)
 		
 	/* The user-space buffer. */
 	/* GFP_KERNEL - Allocate normal kernel ram.*/ 
-	my_buffer = kmalloc (USER_BUFFER_SIZE * sizeof (char), GFP_KERNEL);
+	my_buffer = kmalloc (USER_BUFFER_SIZE * sizeof (*my_buffer), GFP_KERNEL);
 	if (!my_buffer) {
 		result = -ENOMEM;
 		goto fail;
@@ -220,8 +217,6 @@ static int __init driver_init(void)
 	
 	/* my_buffer is of type void, so technically I shouldn't use char */
 	memset (my_buffer, 0, USER_BUFFER_SIZE * sizeof (char));	
-
-
 	return 0;
 	
 	fail:
